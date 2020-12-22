@@ -19,6 +19,7 @@ package sinks
 import (
 	"bytes"
 	"net/http"
+	"encoding/json"
 
 	"github.com/eapache/channels"
 	"github.com/golang/glog"
@@ -123,10 +124,52 @@ loop:
 	}
 }
 
+/**
+ * Instead of written in Syslog format, let's just encode to JSON format, each line as a JSON string ...
+ */
+func (h *HTTPSink) drainEvents(events []EventData) {
+	// Reuse the body buffer for each request
+	h.bodyBuf.Truncate(0)
+
+	var written int64
+	for _, evt := range events {
+        if eJSONBytes, err := json.Marshal(eData); err != nil {
+			glog.Warningf("Could not marshal event to JSON: %v", err)
+            return
+	    }
+
+        w, err := io.WriteString(h.bodyBuf, eJSONBytes)
+		written += w
+		if err != nil {
+			glog.Warningf("Could not write to JSON event (wrote %v) bytes: %v", written, err)
+			return
+		}
+
+		h.bodyBuf.Write([]byte{'\n'})
+		written++
+	}
+
+	req, err := http.NewRequest("POST", h.SinkURL, h.bodyBuf)
+	if err != nil {
+		glog.Warningf(err.Error())
+		return
+	}
+
+	resp, err := h.httpClient.Do(req)
+	if err != nil {
+		glog.Warningf(err.Error())
+		return
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		glog.Warningf("Got HTTP code %v from %v", resp.StatusCode, h.SinkURL)
+	}
+}
+
 // drainEvents takes an array of event data and sends it to the receiving HTTP
 // server. This function is *NOT* re-entrant: it re-uses the same body buffer
 // for each call, truncating it each time to avoid extra memory allocations.
-func (h *HTTPSink) drainEvents(events []EventData) {
+func (h *HTTPSink) drainEventsOld(events []EventData) {
 	// Reuse the body buffer for each request
 	h.bodyBuf.Truncate(0)
 
