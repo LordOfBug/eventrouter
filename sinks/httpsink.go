@@ -17,6 +17,7 @@ limitations under the License.
 package sinks
 
 import (
+	"io"
 	"bytes"
 	"net/http"
 	"encoding/json"
@@ -131,9 +132,10 @@ func (h *HTTPSink) drainEvents(events []EventData) {
 	// Reuse the body buffer for each request
 	h.bodyBuf.Truncate(0)
 
+	var eJSONBytes []byte
 	var written int64
 	for _, evt := range events {
-        if eJSONBytes, err := json.Marshal(eData); err != nil {
+        if eJSONBytes, err := json.Marshal(evt); err != nil {
 			glog.Warningf("Could not marshal event to JSON: %v", err)
             return
 	    }
