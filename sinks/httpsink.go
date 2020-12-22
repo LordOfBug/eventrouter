@@ -132,15 +132,16 @@ func (h *HTTPSink) drainEvents(events []EventData) {
 	// Reuse the body buffer for each request
 	h.bodyBuf.Truncate(0)
 
-	var eJSONBytes []byte
 	var written int64
 	for _, evt := range events {
-        if eJSONBytes, err := json.Marshal(evt); err != nil {
-			glog.Warningf("Could not marshal event to JSON: %v", err)
-            return
-	    }
+        eJSONBytes, err := json.Marshal(evt);
 
-        w, err := io.WriteString(h.bodyBuf, string(eJSONBytes))
+        if err != nil {
+			glog.Warningf("Could not marshal event to JSON: %v", err)
+			return
+		}
+
+		w, err := io.WriteString(h.bodyBuf, string(eJSONBytes))
 		written += int64(w)
 		if err != nil {
 			glog.Warningf("Could not write to JSON event (wrote %v) bytes: %v", written, err)
