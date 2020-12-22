@@ -140,8 +140,8 @@ func (h *HTTPSink) drainEvents(events []EventData) {
             return
 	    }
 
-        w, err := io.WriteString(h.bodyBuf, eJSONBytes)
-		written += w
+        w, err := io.WriteString(h.bodyBuf, string(eJSONBytes))
+		written += int64(w)
 		if err != nil {
 			glog.Warningf("Could not write to JSON event (wrote %v) bytes: %v", written, err)
 			return
